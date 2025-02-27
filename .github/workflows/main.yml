@@ -1,0 +1,40 @@
+name: CI Build (Linux)
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+      
+jobs:
+  trifecta-linux:
+    runs-on: [Linux]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Build project
+        run: |
+          mkdir -p $GITHUB_WORKSPACE/build
+          cd $GITHUB_WORKSPACE/build
+          cmake ..
+          make
+              
+      - name: Mark build status
+        if: ${{ success() }}
+        run: echo "Build succeeded."
+
+      - name: Mark build status
+        if: ${{ failure() }}
+        run: echo "Build failed."
+
+      - name: Cleanup build files
+        run: |
+          rm -rf $GITHUB_WORKSPACE/Trifecta-Linux/build/*
+          rm -f $GITHUB_WORKSPACE/Trifecta-Linux/example_serial_read
+          rm -f $GITHUB_WORKSPACE/Trifecta-Linux/*.o
+        if: '!cancelled()'

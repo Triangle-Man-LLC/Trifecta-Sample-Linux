@@ -24,7 +24,7 @@
 static const char *TAG = "IMU_SERIAL_TEST";
 
 /// @brief IMU device handle
-static fs_device_info imu_device = FS_DEVICE_INFO_UNINITIALIZED;
+static fs_device_info_t imu_device = FS_DEVICE_INFO_UNINITIALIZED;
 
 /// @brief Initialize the Trifecta IMU device, and wait for connection to succeed.
 /// @return 0 on success
@@ -33,7 +33,7 @@ int setup_imu()
     int status = -1;
 
     // The following config values are recommended for resource constrained Linux devices such as Raspberry Pi 3.
-    fs_driver_config imu_config;
+    fs_driver_config_t imu_config;
     imu_config.background_task_core_affinity = -1;
     imu_config.background_task_priority = -1;
     imu_config.read_timeout_micros = 5000;
@@ -88,7 +88,7 @@ int main()
     uint32_t last_timestamp = 0;
 
     /// @brief Quaternion orientation of body relative to earth frame
-    static fs_quaternion orientation_quaternion = {
+    static fs_quaternion_t orientation_quaternion = {
         .w = 1,
         .x = 0,
         .y = 0,
@@ -96,18 +96,26 @@ int main()
     };
 
     /// @brief Euler orientation of body relative to earth frame
-    static fs_vector3 orientation_euler = {
+    static fs_vector3_t orientation_euler = {
         .x = 0,
         .y = 0,
         .z = 0,
     };
 
+    // Turns on the IMU stream.
+    fs_start_stream(&imu_device);
+
     // Read measurements in a loop. CTRL + C will exit the program.
+    int counter = 0;
     while (1)
     {
-        fs_read_one_shot(&imu_device); // Request a single read from the IMU.
-
-        usleep(delay_time_ms * 1000);
+        // It could be a good idea to send a stream keepalive signal to the IMU periodically.
+        // To handle cases where it was disconnected for some reason.
+        if (counter % 1000 == 0)
+        {
+            fs_start_stream(&imu_device);
+        }
+        counter++;
 
         if (fs_get_last_timestamp(&imu_device, &last_timestamp) != 0)
         {
@@ -129,6 +137,8 @@ int main()
         printf("Timestamp (%u)\nQuaternion (%.6f, %.6f, %.6f, %.6f)\nEuler (%.2f, %.2f, %.2f)\n", last_timestamp,
                orientation_quaternion.w, orientation_quaternion.x, orientation_quaternion.y,
                orientation_quaternion.z, orientation_euler.x, orientation_euler.y, orientation_euler.z);
+               
+        usleep(delay_time_ms * 1000);
     }
 
     return 0;

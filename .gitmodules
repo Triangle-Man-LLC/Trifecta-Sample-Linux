@@ -1,4 +1,0 @@
-[submodule "lib/Trifecta-Driver"]
-	path = lib/Trifecta-Driver
-	url = https://github.com/Triangle-Man-LLC/Trifecta-Driver.git
-    branch = linux

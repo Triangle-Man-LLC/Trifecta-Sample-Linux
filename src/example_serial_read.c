@@ -24,36 +24,33 @@
 static const char *TAG = "IMU_SERIAL_TEST";
 
 /// @brief IMU device handle
-static fs_device_info_t imu_device = FS_DEVICE_INFO_UNINITIALIZED;
+fs_device_info_t imu_device;
 
 /// @brief Initialize the Trifecta IMU device, and wait for connection to succeed.
 /// @return 0 on success
-int setup_imu()
+int setup_imu(const char *port_name)
 {
     int status = -1;
 
-    // The following config values are recommended for resource constrained Linux devices such as Raspberry Pi 3.
-    fs_driver_config_t imu_config;
-    imu_config.background_task_core_affinity = -1;
-    imu_config.background_task_priority = -1;
-    imu_config.read_timeout_micros = 5000;
-    imu_config.task_wait_ms = 2;
-    imu_config.task_stack_size_bytes = 128 * 1024;
+    // The following config values are recommended for Linux devices.
+    fs_driver_config_t imu_config = FS_DRIVER_CONFIG_DEFAULT;
+    fs_set_driver_parameters(&imu_device, &imu_config);
 
     // Wait for connection to complete...
-    for (int i = 0; i < 50; i++)
+    for (int i = 0; i < 5; i++)
     {
         // NOTE: Setting this value to -1 causes the driver to auto-detect the IMU device.
-        fs_set_driver_parameters(&imu_device, &imu_config);
-        // This is recommended in most cases, unless you have specifically configured it.
-        // If that is the case, then you need to assign serial_fd by calling open() on that specific serial port name.
-        int serial_fd = -1;
-        status = fs_initialize_serial(&imu_device, serial_fd);
+        // This is recommended in most cases, unless you have more than 1 device, in which case you should
+        // enumerate each port
+        status = fs_initialize_serial(&imu_device, (fs_serial_handle_t)port_name, FS_COMMUNICATION_MODE_USB_CDC);
         if (status == 0)
         {
+            printf("Connected to Trifecta-K IMU %s (FD %ld)",
+                   imu_device.device_descriptor.device_name,
+                   imu_device.device_params.serial_port);
             break;
         }
-        printf("Waiting for IMU connection!\n");
+        fs_closedown(&imu_device);
         usleep(10000);
     }
 
@@ -71,12 +68,24 @@ void handle_signal(int signal)
 /// @brief Demonstrates the setup and read of Trifecta IMU using serial connection.
 /// The IMU is made to read the data once. You can do this in a loop if you would like.
 /// @return
-int main()
+int main(int argc, char **argv)
 {
-    if (setup_imu() != 0)
+    imu_device = FS_DEVICE_INFO_UNINITIALIZED;
+
+    const char *port = NULL;
+    if (argc >= 2)
+        port = argv[1];
+    
+    if (!port)
+    {
+        printf("No port provided! Exiting...\n");
+        return 0;
+    }
+
+    if (setup_imu(port) != 0)
     {
         printf("Failed to connect to IMU! Exiting...\n");
-        exit(0);
+        return 0;
     }
 
     // Register signal handler for cleanup on termination
@@ -137,7 +146,7 @@ int main()
         printf("Timestamp (%u)\nQuaternion (%.6f, %.6f, %.6f, %.6f)\nEuler (%.2f, %.2f, %.2f)\n", last_timestamp,
                orientation_quaternion.w, orientation_quaternion.x, orientation_quaternion.y,
                orientation_quaternion.z, orientation_euler.x, orientation_euler.y, orientation_euler.z);
-               
+
         usleep(delay_time_ms * 1000);
     }
 

@@ -32,29 +32,28 @@ int setup_imu()
 {
     int status = -1;
 
-    // The following config values are recommended for resource constrained Linux devices such as Raspberry Pi 3.
-    fs_driver_config_t imu_config;
-    imu_config.background_task_core_affinity = -1;
-    imu_config.background_task_priority = -1;
-    imu_config.read_timeout_micros = 5000;
-    imu_config.task_wait_ms = 2;
-    imu_config.task_stack_size_bytes = 128 * 1024;
+    // The following config values are recommended for Linux devices.
+    fs_driver_config_t imu_config = FS_DRIVER_CONFIG_DEFAULT;
+    fs_set_driver_parameters(&imu_device, &imu_config);
 
-    // Wait for connection to complete...
-    for (int i = 0; i < 50; i++)
+    for (int serial_port_num = 0; serial_port_num < 30; serial_port_num++)
     {
-        // NOTE: Setting this value to -1 causes the driver to auto-detect the IMU device.
-        fs_set_driver_parameters(&imu_device, &imu_config);
-        // This is recommended in most cases, unless you have specifically configured it.
-        // If that is the case, then you need to assign serial_fd by calling open() on that specific serial port name.
-        int serial_fd = -1;
-        status = fs_initialize_serial(&imu_device, serial_fd);
-        if (status == 0)
+        // Wait for connection to complete...
+        for (int i = 0; i < 5; i++)
         {
-            break;
+            // NOTE: Setting this value to -1 causes the driver to auto-detect the IMU device.
+            // This is recommended in most cases, unless you have more than 1 device, in which case you should
+            // enumerate each port
+            status = fs_initialize_serial(&imu_device, serial_port_num, FS_COMMUNICATION_MODE_USB_CDC);
+            if (status == 0)
+            {
+                printf("Connected to Trifecta-K IMU %s (FD %d)",
+                       imu_device.device_descriptor.device_name,
+                       imu_device.device_params.serial_port);
+                break;
+            }
+            usleep(10000);
         }
-        printf("Waiting for IMU connection!\n");
-        usleep(10000);
     }
 
     return status;
@@ -137,7 +136,7 @@ int main()
         printf("Timestamp (%u)\nQuaternion (%.6f, %.6f, %.6f, %.6f)\nEuler (%.2f, %.2f, %.2f)\n", last_timestamp,
                orientation_quaternion.w, orientation_quaternion.x, orientation_quaternion.y,
                orientation_quaternion.z, orientation_euler.x, orientation_euler.y, orientation_euler.z);
-               
+
         usleep(delay_time_ms * 1000);
     }
 

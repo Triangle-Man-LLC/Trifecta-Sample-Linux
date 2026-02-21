@@ -15,11 +15,16 @@ add_subdirectory(lib/Trifecta-Driver)
 
 # Add the executable
 add_executable(example_serial_read src/example_serial_read.c)
+add_executable(example_network_read src/example_network_read.c)
 
 # Link to the DriverTrifectaLinux library
 target_link_libraries(example_serial_read PRIVATE DriverTrifectaLinux)
+target_link_libraries(example_network_read PRIVATE DriverTrifectaLinux)
 
 # Include directories for the DriverTrifectaLinux library
-target_include_directories(example_serial_read PRIVATE
+target_include_directories(example_network_read PRIVATE
+    $<TARGET_PROPERTY:DriverTrifectaLinux,INTERFACE_INCLUDE_DIRECTORIES>
+)
+target_include_directories(example_network_read PRIVATE
     $<TARGET_PROPERTY:DriverTrifectaLinux,INTERFACE_INCLUDE_DIRECTORIES>
 )

@@ -28,7 +28,7 @@ fs_device_info_t imu_device;
 
 /// @brief Initialize the Trifecta IMU device, and wait for connection to succeed.
 /// @return 0 on success
-int setup_imu(const char *port_name)
+int setup_imu(const char *ip_addr)
 {
     int status = -1;
 
@@ -42,12 +42,12 @@ int setup_imu(const char *port_name)
         // NOTE: Setting this value to -1 causes the driver to auto-detect the IMU device.
         // This is recommended in most cases, unless you have more than 1 device, in which case you should
         // enumerate each port
-        status = fs_initialize_serial(&imu_device, (fs_serial_handle_t)port_name, FS_COMMUNICATION_MODE_USB_CDC);
+        status = fs_initialize_networked(&imu_device, ip_addr);
         if (status == 0)
         {
-            printf("Connected to Trifecta-K IMU %s (Serial address %s)",
+            printf("Connected to Trifecta-K IMU %s (IP address %s)",
                    imu_device.device_descriptor.device_name,
-                   imu_device.device_params.serial_path);
+                   imu_device.device_params.ip_addr);
             break;
         }
         fs_closedown(&imu_device);
@@ -72,17 +72,17 @@ int main(int argc, char **argv)
 {
     imu_device = FS_DEVICE_INFO_UNINITIALIZED;
 
-    const char *port = NULL;
+    const char *addr = NULL;
     if (argc >= 2)
-        port = argv[1];
+        addr = argv[1];
     
-    if (!port)
+    if (!addr)
     {
-        printf("No port provided! Exiting...\n");
+        printf("No IP address provided! Exiting...\n");
         return 0;
     }
 
-    if (setup_imu(port) != 0)
+    if (setup_imu(addr) != 0)
     {
         printf("Failed to connect to IMU! Exiting...\n");
         return 0;
